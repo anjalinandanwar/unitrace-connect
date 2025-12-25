@@ -147,7 +147,7 @@ const Index = () => {
               <span className="font-semibold text-foreground">UniTrace</span>
             </div>
             <p className="text-sm text-muted-foreground">
-              © 2024 UniTrace. Keeping campus belongings safe.
+              © 2025 UniTrace. Keeping campus belongings safe.
             </p>
           </div>
         </div>
