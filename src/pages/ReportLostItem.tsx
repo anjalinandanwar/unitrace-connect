@@ -1,11 +1,16 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, MapPin, FileText, Tag, AlertCircle } from 'lucide-react';
+import { Upload, MapPin, FileText, Tag, AlertCircle, Loader2 } from 'lucide-react';
 import Header from '../components/Header';
 import { locations, categories } from '../data/mockData';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const ReportLostItem = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     location: '',
@@ -29,14 +34,50 @@ const ReportLostItem = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    sessionStorage.setItem('reportedItem', JSON.stringify({
-      ...formData,
-      type: 'lost',
-      image: imagePreview,
-    }));
-    navigate('/matches?type=lost');
+    
+    if (!user) {
+      toast.error('Please sign in to report an item');
+      navigate('/auth');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const { data, error } = await supabase
+        .from('items')
+        .insert({
+          user_id: user.id,
+          name: formData.name,
+          description: formData.description,
+          location: formData.location,
+          category: formData.category,
+          color: formData.color || null,
+          brand: formData.brand || null,
+          type: 'lost',
+          image_url: imagePreview,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast.success('Item reported successfully!');
+      
+      sessionStorage.setItem('reportedItem', JSON.stringify({
+        ...formData,
+        type: 'lost',
+        image: imagePreview,
+      }));
+      navigate('/matches?type=lost');
+    } catch (error) {
+      console.error('Error reporting item:', error);
+      toast.error('Failed to report item. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -49,6 +90,20 @@ const ReportLostItem = () => {
             <h1 className="section-title">Report Lost Item</h1>
             <p className="section-subtitle">We'll help you find what you've lost</p>
           </div>
+
+          {!user && (
+            <div className="bg-secondary/50 rounded-xl p-4 mb-6 text-center animate-fade-in">
+              <p className="text-foreground">
+                <button 
+                  onClick={() => navigate('/auth')} 
+                  className="text-primary font-medium hover:underline"
+                >
+                  Sign in
+                </button>
+                {' '}to save your report and track matches
+              </p>
+            </div>
+          )}
 
           {/* Tips Banner */}
           <div className="bg-secondary/50 rounded-xl p-4 mb-6 flex items-start gap-3 animate-fade-in">
@@ -205,7 +260,12 @@ const ReportLostItem = () => {
             </div>
 
             {/* Submit Button */}
-            <button type="submit" className="btn-primary w-full text-lg">
+            <button 
+              type="submit" 
+              disabled={loading}
+              className="btn-primary w-full text-lg flex items-center justify-center gap-2"
+            >
+              {loading && <Loader2 className="w-5 h-5 animate-spin" />}
               Submit & Find Matches
             </button>
           </form>
