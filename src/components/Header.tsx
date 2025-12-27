@@ -1,9 +1,13 @@
-import { Link, useLocation } from 'react-router-dom';
-import { MapPin, Menu, X } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { MapPin, Menu, X, LogIn, LogOut, User } from 'lucide-react';
 import { useState } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
 
 const Header = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const navLinks = [
@@ -13,7 +17,17 @@ const Header = () => {
     { path: '/nearby', label: 'Nearby Items' },
   ];
 
+  if (user) {
+    navLinks.push({ path: '/my-items', label: 'My Items' });
+  }
+
   const isActive = (path: string) => location.pathname === path;
+
+  const handleSignOut = async () => {
+    await signOut();
+    toast.success('Signed out successfully');
+    navigate('/');
+  };
 
   return (
     <header className="bg-card border-b border-border sticky top-0 z-50">
@@ -42,6 +56,31 @@ const Header = () => {
                 {link.label}
               </Link>
             ))}
+            
+            {/* Auth Button */}
+            {user ? (
+              <div className="flex items-center gap-2 ml-2">
+                <span className="text-sm text-muted-foreground flex items-center gap-1">
+                  <User className="w-4 h-4" />
+                  {user.email?.split('@')[0]}
+                </span>
+                <button
+                  onClick={handleSignOut}
+                  className="flex items-center gap-1 px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Sign Out
+                </button>
+              </div>
+            ) : (
+              <Link
+                to="/auth"
+                className="flex items-center gap-1 ml-2 px-4 py-2 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
+              >
+                <LogIn className="w-4 h-4" />
+                Sign In
+              </Link>
+            )}
           </nav>
 
           {/* Mobile Menu Button */}
@@ -75,6 +114,35 @@ const Header = () => {
                   {link.label}
                 </Link>
               ))}
+              
+              {/* Mobile Auth */}
+              {user ? (
+                <>
+                  <div className="px-4 py-2 text-sm text-muted-foreground flex items-center gap-2">
+                    <User className="w-4 h-4" />
+                    {user.email}
+                  </div>
+                  <button
+                    onClick={() => {
+                      handleSignOut();
+                      setIsMenuOpen(false);
+                    }}
+                    className="px-4 py-3 rounded-lg font-medium text-left text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-2"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Sign Out
+                  </button>
+                </>
+              ) : (
+                <Link
+                  to="/auth"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="px-4 py-3 rounded-lg font-medium bg-primary text-primary-foreground flex items-center gap-2"
+                >
+                  <LogIn className="w-4 h-4" />
+                  Sign In
+                </Link>
+              )}
             </div>
           </nav>
         )}

@@ -1,14 +1,67 @@
-import { useState } from 'react';
-import { MapPin, Filter } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { MapPin, Filter, Loader2 } from 'lucide-react';
 import Header from '../components/Header';
 import ItemCard from '../components/ItemCard';
 import { mockFoundItems, mockLostItems, locations, Item } from '../data/mockData';
+import { supabase } from '@/integrations/supabase/client';
+
+interface DbItem {
+  id: string;
+  name: string;
+  description: string | null;
+  location: string;
+  date: string;
+  image_url: string | null;
+  type: string;
+  category: string;
+  color: string | null;
+  brand: string | null;
+}
 
 const NearbyItems = () => {
   const [selectedLocation, setSelectedLocation] = useState<string>('');
   const [selectedType, setSelectedType] = useState<'all' | 'lost' | 'found'>('all');
+  const [dbItems, setDbItems] = useState<Item[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const allItems: Item[] = [...mockFoundItems, ...mockLostItems];
+  useEffect(() => {
+    fetchItems();
+  }, []);
+
+  const fetchItems = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('items')
+        .select('*')
+        .eq('status', 'active')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const items: Item[] = (data || []).map((item: DbItem) => ({
+        id: item.id,
+        name: item.name,
+        description: item.description || '',
+        location: item.location,
+        date: item.date,
+        image: item.image_url || 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&h=300&fit=crop',
+        type: item.type as 'lost' | 'found',
+        category: item.category,
+        color: item.color || undefined,
+        brand: item.brand || undefined,
+      }));
+
+      setDbItems(items);
+    } catch (error) {
+      console.error('Error fetching items:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Combine database items with mock items for demo
+  const allMockItems: Item[] = [...mockFoundItems, ...mockLostItems];
+  const allItems: Item[] = dbItems.length > 0 ? [...dbItems, ...allMockItems] : allMockItems;
 
   const filteredItems = allItems.filter((item) => {
     const locationMatch = !selectedLocation || item.location === selectedLocation;
@@ -24,6 +77,17 @@ const NearbyItems = () => {
     acc[item.location].push(item);
     return acc;
   }, {} as Record<string, Item[]>);
+
+  if (loading) {
+    return (
+      <div className="page-container">
+        <Header />
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page-container">
